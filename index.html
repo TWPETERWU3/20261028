@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>製造判斷器</title>
+<link rel="icon" href="/favicon.svg">
+<style>
+:root{--ink:#16181d;--body:#475569;--line:#e2e8f0;--accent:#0f766e;--accent-soft:#ccfbf1;--warn:#b45309;--bg:#f8fafc;--card:#fff;--muted:#94a3b8;--th:#f1f5f9}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ink:#e5e7eb;--body:#cbd5e1;--line:#334155;--accent:#2dd4bf;--accent-soft:#134e4a;--warn:#fbbf24;--bg:#0b1120;--card:#111827;--muted:#64748b;--th:#1e293b}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+input[type=range]{accent-color:var(--accent)}
+body{margin:0;font:15px/1.6 "Noto Sans TC","PingFang TC",system-ui,sans-serif;color:var(--ink);background:var(--bg)}
+header,main,footer{max-width:1180px;margin:0 auto;padding:0 16px}
+header{padding-top:22px}
+h1{font-size:1.5rem;margin:0 0 .2rem}
+.sub{color:var(--body);font-size:.92rem;margin-bottom:1rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:1rem;margin:0 0 .5rem}
+label{font-size:.88rem;color:var(--body)}
+input[type=text],input[type=password],textarea,select{width:100%;padding:.45rem .6rem;border:1px solid var(--line);border-radius:8px;font:inherit;background:var(--card);color:var(--ink)}
+textarea{min-height:7rem;resize:vertical;font-size:.9rem}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button{font:inherit;font-weight:700;border:0;border-radius:999px;padding:.5rem 1.1rem;background:var(--accent);color:#fff;cursor:pointer}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) button:not(.ghost){color:#042f2e}}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent);font-weight:600;padding:.35rem .8rem;font-size:.85rem}
+button.ghost.on{background:var(--accent-soft)}
+button[disabled]{opacity:.5;cursor:not-allowed}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+th,td{border-bottom:1px solid var(--line);padding:.4rem .5rem;text-align:left;vertical-align:top}
+th{background:var(--th);font-size:.8rem;position:sticky;top:0}
+.tag{display:inline-block;padding:.1rem .5rem;border-radius:999px;font-size:.75rem;font-weight:700;white-space:nowrap}
+.hi{background:#dcfce7;color:#166534}.lo{background:#fef3c7;color:#92400e}.err{background:#fee2e2;color:#991b1b}
+.p{font-size:.75rem;color:var(--muted);margin-left:.25rem}
+.muted{color:var(--muted);font-size:.82rem}
+.cases{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.case{text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-weight:400;cursor:pointer}
+.case:hover,.case.on{border-color:var(--accent);background:var(--accent-soft)}
+.case b{display:block;font-size:1rem;margin-bottom:.15rem}
+.case .dl{display:block;margin-top:.45rem;padding:.2rem .7rem;font-size:.78rem}
+.cgrp{grid-column:1/-1;font-weight:800;font-size:.85rem;color:var(--accent);margin-top:.4rem;border-bottom:1px solid var(--line);padding-bottom:.2rem}
+.case span{font-size:.84rem;color:var(--body)}
+.qs{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.q{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.q .qh{display:flex;gap:8px;align-items:center;margin-bottom:.4rem}
+.q .qh input{flex:1;font-weight:700}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.bar{display:grid;grid-template-columns:7.5rem 1fr 2.6rem;gap:8px;align-items:center;font-size:.85rem;margin:.2rem 0}
+.bar i{display:block;height:.7rem;border-radius:4px;background:var(--accent)}
+.bar b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.big{font-size:1.6rem;font-weight:800}
+#log{max-height:170px;overflow:auto;font:12px/1.5 ui-monospace,Menlo,monospace;background:#0f172a;color:#e2e8f0;border-radius:10px;padding:10px}
+#log .e{color:#fca5a5}#log .i{color:#86efac}#log .o{color:#93c5fd}
+footer{color:var(--muted);font-size:.8rem;padding:14px 16px 40px}
+@media (max-width:600px){.bar{grid-template-columns:5.5rem 1fr 2.2rem}}
+</style>
+
+<header>
+  <h1>製造判斷器</h1>
+  <div class="row" style="justify-content:space-between;align-items:flex-start"><div style="flex:1;min-width:16rem"><div class="sub">停機紀錄、維修單、不良描述、客訴、試作紀錄、SOP 改版，<b>用你們廠裡自己的分類和說法</b>，讓 Jev 一筆一筆判：是哪一類、有多少把握。把握不夠的，標出來交給人看。</div></div>
+  <button class="ghost" id="save2" style="white-space:nowrap">下載這個網頁（HTML）</button></div>
+</header>
+
+<main>
+  <div class="card">
+    <h2>先挑一個案例看看（資料和分類一次放好）</h2>
+    <p class="muted" style="margin:0 0 .5rem">Jev 只要你給類別和描述就能判，所以工廠裡每天「讀一段文字、決定歸哪一類」的事都可以先讓它分一輪。每個案例都能<b>下載 CSV</b>，改成你們自己的資料。</p>
+    <div class="cases" id="cases"></div>
+    <p class="muted" style="margin:.5rem 0 0">示範資料都是編的，是課程用的射出廠。看懂之後，換成你們自己的資料和分類。</p>
+  </div>
+
+  <div class="card">
+    <h2>1　資料</h2>
+    <div class="row" style="margin-bottom:.45rem">
+      <input type="file" id="file" accept=".csv,.tsv,.txt" style="flex:1;min-width:14rem">
+          </div>
+    <p class="muted" id="fileMsg" style="margin:.2rem 0 .5rem">選一個 CSV（Excel 另存成 CSV UTF-8），或直接在下面貼，一行一筆。檔案也可以拖到框裡。</p>
+    <div class="row" id="colRow" hidden style="margin-bottom:.5rem">
+      <label for="col" style="white-space:nowrap">哪一欄是內容</label>
+      <select id="col" style="width:auto;min-width:10rem"></select>
+    </div>
+    <textarea id="src" placeholder="3 號機頂針斷了，拆模換頂針 2 小時&#10;等原料，倉庫說下午才到&#10;模溫機溫度一直上不來，叫保養來看"></textarea>
+    <p class="muted" style="margin:.3rem 0 0">一次最多判 <b>100</b> 筆。不要放客戶名稱、配方比例、報價：送出去的內容會經過 Jev 的伺服器（先用「能不能給 AI 看」那個案例判一次）。</p>
+  </div>
+
+  <div class="card">
+    <h2>2　你要怎麼分</h2>
+    <div class="row" style="margin-bottom:.6rem">
+      <span class="muted">先挑一個起點，再改成你自己的說法：</span>
+      <button class="ghost" data-preset="cause">停機原因</button>
+      <button class="ghost" data-preset="who">找誰處理</button>
+      <button class="ghost" data-preset="urgentm">急不急</button>
+      <button class="ghost" data-preset="defect">不良類型</button>
+      <button class="ghost" data-preset="rootcause">8D 根因</button>
+      <button class="ghost" data-preset="grade">資料分級</button>
+      <button class="ghost" data-preset="pfas">要不要查 PFAS</button>
+      <button class="ghost" data-preset="blank">空白自己寫</button>
+    </div>
+    <div class="qs" id="qs"></div>
+    <div class="row" style="margin-top:.6rem">
+      <button class="ghost" id="addQ">再加一題（最多 3 題）</button>
+      <span class="muted"><b>一行一類，冒號前是類別、冒號後是你的形容詞。</b>形容詞寫得越像你們公司平常的說法，Jev 判得越準。</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3　判</h2>
+    <div class="row">
+      <label class="row" style="gap:6px"><input type="checkbox" id="useClass" checked> 用課堂金鑰</label>
+      <input type="password" id="key" placeholder="或貼你自己的 Jev 金鑰（console.typesafe.ai）" style="flex:1;min-width:14rem" hidden autocomplete="off">
+      <label class="row" style="gap:6px" id="rememberRow" hidden><input type="checkbox" id="remember"> 記在這台電腦</label>
+      <button class="ghost" id="forget" hidden>清除</button>
+    </div>
+    <p class="muted" style="margin:.3rem 0 .6rem">課堂金鑰全班共用、下課後會關。回公司到 <a href="https://console.typesafe.ai" target="_blank" rel="noopener">console.typesafe.ai</a> 申請自己的金鑰，取消勾選「用課堂金鑰」貼上去。金鑰不會寫進這個檔案；勾「記在這台電腦」才會存在這台瀏覽器，按「清除」就刪掉。</p>
+    <div class="row">
+      <button id="run">開始判</button>
+      <button class="ghost" id="stop" hidden>停</button>
+      <span class="muted" id="prog"></span>
+    </div>
+  </div>
+
+  <div class="card" id="resCard" hidden>
+    <h2>4　結果</h2>
+    <div class="row" style="margin-bottom:.6rem">
+      <label for="th" style="white-space:nowrap">把握多少以上才自動分類</label>
+      <input type="range" id="th" min="0.5" max="0.99" step="0.01" value="0.8" style="flex:1;min-width:10rem">
+      <b id="thv">0.80</b>
+    </div>
+    <div class="row" style="gap:24px;margin-bottom:.6rem">
+      <div><div class="muted">判完</div><div class="big" id="nAll">0</div></div>
+      <div><div class="muted">自動分類</div><div class="big" id="nAuto">0</div></div>
+      <div><div class="muted">要人看</div><div class="big" style="color:var(--warn)" id="nHuman">0</div></div>
+    </div>
+    <p id="agree" style="margin:0 0 .6rem;font-weight:700" hidden></p>
+    <p class="muted" style="margin:0 0 .8rem">門檻拉高，要人看的變多、錯的溜過去變少；拉低反過來。<b>門檻是人定的</b>，Jev 只負責給把握。</p>
+    <div class="sum" id="sum"></div>
+    <div class="row" style="margin:.9rem 0 .5rem">
+      <label class="row" style="gap:6px"><input type="checkbox" id="onlyHuman"> 只看要人看的</label>
+      <button class="ghost" id="csv">下載結果 CSV</button>
+    </div>
+    <div style="max-height:460px;overflow:auto"><table>
+      <thead id="th2"></thead>
+      <tbody id="tb"></tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <h2>通訊紀錄</h2>
+    <div id="log"></div>
+    <p class="muted">網頁 → jev.mileschen.dev（轉接站，不存金鑰、不記錄內容）→ TypeSafe 的 Jev。點一筆可以看送出去和收回來的原始資料。</p>
+  </div>
+</main>
+
+<footer>模型：TypeSafe Jev（jev-latest）。Jev 只做判斷，不寫文字：回答「是哪一類」和「有多少把握」。　<a href="#" id="save">把這一頁存下來</a>，放進你們的 Prototype 倉庫也可以（裡面沒有金鑰）。</footer>
+
+<script>
+/* 轉接站：Jev 不接受瀏覽器直接呼叫（CORS），所以經過 jev.mileschen.dev；教室防火牆擋網域時自動換 workers.dev */
+const RELAYS = ['https://jev.mileschen.dev/v1/systemone', 'https://jev-relay.classroom-quiz-cf.workers.dev/v1/systemone'];
+let RELAY = RELAYS[0];
+const MAX_ROWS = 100;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const PRESETS = {
+  cause: {name:'停機原因', ask:'這次停機主要是什麼原因？', cats:
+    '模具：模具卡住、頂針斷、冷卻水路漏水、模溫不穩、換模\n設備：機台警報、液壓、加熱圈、螺桿、機械手臂\n材料：原料潮濕、色差、雜質、料斗堵塞、換料\n待料待單：沒料、等上一站、等排程、等品檢放行\n人員：缺人、交接、誤操作、新人不熟\n計畫性：定期保養、試模、盤點、停電公告'},
+  who: {name:'找誰處理', ask:'這件事應該交給誰處理？', cats:
+    '產線自己排除：調參數、清料斗、重開機就好\n叫設備保養：機台、液壓、電控、機械手臂\n叫模具課：模具損壞、要拆模、修模\n要主管決定：要停線、改排程、通知客戶'},
+  urgentm: {name:'急不急', ask:'這張維修單要多快處理？', cats:
+    '立刻：已經停線、有人可能受傷、不良品可能流出去\n今天內：還能生產但良率在掉、警報一直跳\n排進保養：不影響生產，下次保養一起做'},
+  safety: {name:'安全疑慮', ask:'這件事有沒有安全疑慮？', cats:
+    '有：漏電、燙傷、夾傷、安全門、漏油、異味冒煙\n沒有：單純品質、效率、外觀的問題'},
+  abnormal: {name:'要不要追', ask:'這句日報備註，需要有人追嗎？', cats:
+    '要追：有異常、有不良、有人工補救、數字對不上\n一般紀錄：交接、正常換料、照計畫保養\n看不懂要問：寫得太簡略，看不出發生什麼事'},
+  handover: {name:'交接完整', ask:'這段換模交接紀錄，缺了什麼？', cats:
+    '完整：模號、成型條件、首件結果、注意事項都有\n漏條件：沒寫溫度、壓力、保壓時間，或用哪一組條件\n漏首件：沒寫首件檢驗結果、誰放行\n太含糊：只寫「正常」「同上次」，下一班看不懂'},
+  defect: {name:'不良類型', ask:'這是哪一種射出不良？', cats:
+    '縮水：表面凹陷、厚的地方凹下去、縮痕\n毛邊：披鋒、溢料、分模線多出一片料\n銀紋：表面銀白色條紋、水花、料沒烘乾\n短射：缺料、充填不足、缺角、沒打滿\n翹曲：變形、不平、組裝對不上\n黑點異物：黑點、焦痕、雜質、髒污\n熔接線：兩股料交會的線痕、強度變差'},
+  fix: {name:'先從哪裡改', ask:'這個不良最可能先從哪裡改善？', cats:
+    '成型條件：溫度、壓力、速度、保壓、冷卻時間\n模具：排氣、澆口、水路、模具磨損\n材料：乾燥、回收料比例、批號、色母\n還不能判斷：要現場看或做實驗'},
+  severity: {name:'嚴重程度', ask:'這件客訴要怎麼處理？', cats:
+    '要 8D：同一種不良重複發生、影響功能或安全、客戶要求正式報告\n退換貨：少量、外觀、單一批次\n一般回覆：詢問、建議、誤會，說明清楚就好'},
+  rootcause: {name:'8D 根因', ask:'這段根因分析，主要歸在哪一類？', cats:
+    '人：沒照 SOP、新人、交接、判斷錯\n機：機台、模具、治具、量具\n料：原料、色母、供應商批次、回收料\n法：SOP 沒寫、條件設定錯、檢驗方法不對\n環：溫濕度、季節、粉塵、停電'},
+  iqc: {name:'進料判定', ask:'這批進料應該怎麼處理？', cats:
+    '允收：規格內、證明文件齊全\n特採：小偏差，要品保主管簽核才能用\n退貨：明顯不合格、文件不符、包裝破損受潮\n送驗：要實驗室再測物性或成分才能判斷'},
+  variable: {name:'試作變因', ask:'這次試作主要改了哪一個變因？', cats:
+    '溫度：料溫、模溫、熔膠溫度\n壓力保壓：射出壓力、保壓壓力、保壓時間\n乾燥：烘料溫度、時間、含水率\n配方：改質劑、色母、回收料、填充物比例\n模具：澆口、排氣、水路改模'},
+  next: {name:'下一步', ask:'看這筆試作紀錄，下一步最該做什麼？', cats:
+    '可以進下一階段：數據達標、條件穩定\n再試一次：差一點、要微調\n數據不夠：沒記條件、樣本太少、量測方法不一樣\n要改配方：條件怎麼調都不行'},
+  sopdept: {name:'影響誰', ask:'這次 SOP 改版主要影響哪個單位？', cats:
+    '製造：成型條件、作業步驟、換模流程\n品保：檢驗項目、抽樣、允收標準\n採購倉管：原料規格、供應商、保存條件\n研發：配方、測試方法\n全廠：安全、環保、法規'},
+  sopsize: {name:'要不要重新訓練', ask:'這次改版要怎麼讓現場知道？', cats:
+    '要重新訓練：步驟、條件、判定標準改了\n通知就好：錯字、格式、聯絡人、編號\n要先確認：寫得不清楚，看不出改了什麼'},
+  grade: {name:'資料分級', ask:'這份資料能不能貼給雲端 AI？', cats:
+    '紅：配方比例、客戶名單、報價、未公開的專利或新品，不能給雲端 AI\n黃：內部 SOP、良率、成型條件、異常紀錄，去識別化後、用企業版才可以\n綠：公開型錄、法規、教科書知識，可以直接給'},
+  pfas: {name:'要不要查 PFAS', ask:'這段材料描述，需要查 PFAS（全氟化合物）嗎？', cats:
+    '要查：含氟、PTFE、鐵氟龍、氟橡膠、防沾、防水防油塗層、含氟脫模劑或加工助劑\n要問供應商：成分沒寫清楚、要出口歐盟、食品接觸、紡織品\n不用查：明確不含氟的一般材料與用途'},
+  blank: {name:'', ask:'', cats:''}
+};
+/* 十二個案例：一個案例＝一份示範資料＋幾題分類。資料都是編的，課程用的射出廠 */
+const CASES = [
+  {id:'downtime', grp:'製造', title:'停機原因', desc:'生產日報的停機紀錄。判原因、該找誰（接 D2 ③ 停機王）。', qs:['cause','who'], data:null},
+  {id:'repair', grp:'製造', title:'維修急不急', desc:'產線開的維修單。判多快要處理、有沒有安全疑慮。', qs:['urgentm','safety'], data:[
+    '7 號機安全門關上了還能動作，作業員差點被夾到',
+    '3 號機機械手臂偶爾夾不到產品，大概十模一次',
+    '冷卻水管接頭在滴水，地上有一小灘',
+    '12 號機加熱圈第三段溫度一直跳，良率從 98 掉到 91',
+    '操作面板有一顆按鍵不太靈敏，要按兩次',
+    '5 號機液壓油管滲油，旁邊有油味',
+    '料斗乾燥機風扇聲音變大',
+    '8 號機整台停了，螢幕顯示馬達過載',
+    '廠房日光燈有兩支不亮',
+    '模溫機有燒焦味，已經先關掉',
+    '產品掉落輸送帶的擋板鬆了，產品偶爾掉地上',
+    '電控箱門關不緊'
+  ]},
+  {id:'dailynote', grp:'製造', title:'日報備註異常', desc:'日報最後那格「備註」。判要不要有人追、該找誰。', qs:['abnormal','who'], data:[
+    '正常',
+    '換料後前 30 模有色差，已挑出報廢',
+    '同上',
+    '首件尺寸 OK，主管已簽',
+    '下午停電 10 分鐘，重開後條件調回',
+    '產量少 200，原因待查',
+    '料斗結塊，清了兩次',
+    '依計畫換模 A-203 → B-117',
+    '有幾模怪怪的',
+    '夜班交接時發現模具冷卻水沒開，已開',
+    '依保養表加潤滑油',
+    '不良品數跟報廢單對不起來，差 46 個'
+  ]},
+  {id:'handover', grp:'製造', title:'換模交接漏項', desc:'換模後寫給下一班的交接。判缺了什麼，下一班接得起來嗎。', qs:['handover'], data:[
+    '換 B-117，條件用 B-117-02，料溫 230、模溫 60、保壓 6 秒，首件尺寸 OK 品保王課長放行，注意頂針第三支會黏料',
+    '換好了，跟上次一樣',
+    '換 C-305，條件照舊，首件還沒量',
+    '模具 A-203 上機，料溫 225、模溫 55，射出 80%，首件外觀 OK',
+    '已換模，正常',
+    'B-117 上機，用第二組條件，首件尺寸外觀都 OK，夜班組長放行，冷卻時間要比表上多 2 秒',
+    '換模完成，參數有微調',
+    'D-410 上機，首件 OK，要注意分模線容易毛邊',
+    '換 A-203，保壓 5 秒，首件林組長放行，料要烘滿 4 小時',
+    '同上次',
+    '換 C-305，條件 C-305-01 全部照表，首件三個尺寸都在公差內，品保簽了',
+    '有換模，細節問白班'
+  ]},
+  {id:'defect', grp:'品質', title:'射出不良', desc:'檢驗員、作業員寫的不良描述。判不良類型、先從哪裡改。', qs:['defect','fix'], data:[
+    '產品背面厚的那一塊凹下去一點',
+    '分模線那邊多出一片薄薄的料',
+    '表面有一條一條銀白色的紋路',
+    '最遠那個角沒打滿，缺一塊',
+    '放到平台上會晃，有一角翹起來',
+    '表面有幾個小黑點，擦不掉',
+    '孔旁邊有一條細線，用力一折就從那裡斷',
+    '這批料剛換，表面一片霧霧的白條紋',
+    '螺絲柱背面看得到凹痕',
+    '邊緣割手，有一圈多出來的料',
+    '組裝時卡扣對不上，好像變形',
+    '透明件裡面有一點焦黃色'
+  ]},
+  {id:'complaint', grp:'品質', title:'客訴不良類型', desc:'客戶寫來的客訴。判是哪一種不良、要不要做 8D。', qs:['defect','severity'], data:[
+    '這批外殼有 30% 翹曲，裝不進我們的機構，第三次了，請提出 8D 報告',
+    '收到的零件有幾個表面有凹痕，請換貨',
+    '卡扣處斷裂，我們懷疑強度不夠，可能有安全問題',
+    '請問貴司產品的耐溫是幾度？',
+    '有一箱零件表面有黑點，其他箱正常',
+    '連續兩批邊緣有毛邊，作業員組裝時割傷手',
+    '顏色比樣品深一點，客人還可以接受，下次注意',
+    '產品缺角，少了 12 個，請補寄',
+    '透明蓋有銀白條紋，我們的客戶很在意外觀',
+    '同一個卡扣位置又斷了，這次是上週出的貨',
+    '包裝上的料號跟裡面不一樣',
+    '請提供這個料號的材質證明'
+  ]},
+  {id:'eightd', grp:'品質', title:'8D 根因', desc:'8D 報告裡寫的原因分析。判根因歸在人、機、料、法、環哪一類。', qs:['rootcause'], data:[
+    '夜班新人沒照 SOP 烘料，直接上料生產',
+    '模具第二穴排氣孔被堵住，造成充填不足',
+    '供應商這批原料熔融指數偏高，流動性變大造成毛邊',
+    'SOP 沒寫換色時要清幾模，作業員自己判斷',
+    '梅雨季濕度高，原料吸濕造成銀紋',
+    '保壓時間設定成 3 秒，正確應該是 6 秒',
+    '量測治具磨損，量出來的尺寸偏小 0.05',
+    '回收料比例從 10% 調到 25%，強度下降',
+    '檢驗只抽外觀，沒有抽尺寸',
+    '冷卻水塔清洗後水溫偏高',
+    '交接本沒寫模溫異常，下一班沒發現',
+    '加熱圈老化，第三段溫度不穩'
+  ]},
+  {id:'iqc', grp:'品質', title:'進料檢驗', desc:'進料檢驗的紀錄。判允收、特採、退貨，還是要送驗。', qs:['iqc'], data:[
+    'PP 原料 25 包，COA 齊全，熔融指數在規格內',
+    '色母顏色比標準板偏黃一點，色差 ΔE 1.2，規格是 1.0',
+    '有 3 包外袋破損，裡面的料受潮結塊',
+    'ABS 原料沒有附 COA，供應商說之後補',
+    '尼龍料含水率 0.25%，規格 0.2% 以下',
+    '包裝標籤的批號跟 COA 上寫的不一樣',
+    '新供應商第一批，外觀正常，物性還沒測',
+    '玻纖含量標 30%，客戶要求要有第三方報告',
+    'PC 料外觀、文件都正常',
+    '色母來料比上次深很多，肉眼就看得出來',
+    '回收料裡面看得到其他顏色的顆粒',
+    '數量少 2 包，其他正常'
+  ]},
+  {id:'trial', grp:'研發', title:'試作變因', desc:'研發的試作紀錄。判這次改了什麼、下一步做什麼（接 D2 ④ 研發線）。', qs:['variable','next'], data:[
+    '料溫從 230 調到 240，翹曲從 1.2mm 降到 0.6mm，目標 0.5',
+    '保壓時間 5 秒改 8 秒，縮水改善，尺寸都在公差內，連續 200 模穩定',
+    '烘料從 2 小時改 4 小時，銀紋消失',
+    '加 5% 增韌劑，衝擊強度 OK，但拉伸強度掉了 15%',
+    '回收料從 0 加到 20%，外觀看不出差別，物性還沒測',
+    '模溫 40 改 70，表面亮度變好',
+    '澆口加大 0.5mm，短射改善，但出現毛邊',
+    '改用新色母，顏色接近，樣本只做了 5 件',
+    '保壓壓力調高兩次都還是縮水',
+    '三組條件交叉試，第二組最好，但沒記冷卻時間',
+    '換玻纖 30% 的料，剛性夠了，翹曲變嚴重',
+    '同一組條件做 3 天，良率 99.2%、99.0%、99.3%'
+  ]},
+  {id:'sop', grp:'研發', title:'SOP 改版影響', desc:'SOP 改版說明。判影響哪個單位、要不要重新訓練。', qs:['sopdept','sopsize'], data:[
+    '換色清機由 20 模改為 40 模',
+    '修正第 3 頁錯字',
+    '外觀檢驗新增「熔接線長度不得超過 5mm」',
+    '原料保存改為除濕倉，濕度 50% 以下',
+    'PC 料烘料溫度 120 改 110，時間 4 小時不變',
+    '更新緊急聯絡人電話',
+    '新增機械手臂區域的安全圍籬規定',
+    '抽樣由每 2 小時 5 件改為每小時 5 件',
+    '配方 F-12 的增韌劑比例調整（詳見研發附件）',
+    '文件編號改為新制',
+    '新增歐盟出口產品的材料聲明要求',
+    '部分內容調整'
+  ]},
+  {id:'sensitive', grp:'研發', title:'能不能給 AI 看', desc:'要貼給 AI 之前，先判這份資料是紅、黃、綠哪一級（接講義 158 資料分級）。', qs:['grade'], data:[
+    'F-12 配方：PP 70%、增韌劑 12%、滑石粉 15%、色母 3%',
+    '射出機操作手冊（原廠公開版）',
+    '七月各機台良率與停機時數',
+    '甲客戶明年度報價單',
+    '經濟部公告的 AI 補助辦法',
+    '成型條件表 B-117-02',
+    '新品開發計畫（未對外公布）',
+    '塑膠材料物性教科書第三章',
+    '8D 報告（已拿掉客戶名稱和料號）',
+    '主要客戶聯絡人名單',
+    '公司官網的產品型錄',
+    '專利申請草稿'
+  ]},
+  {id:'pfas', grp:'研發', title:'要不要查 PFAS', desc:'材料、助劑、客戶需求的描述。判要不要查全氟化合物（歐盟 2026-10-10 起限制 PFHxA）。', qs:['pfas'], data:[
+    '模具用含氟脫模劑，噴一次可以脫 50 模',
+    '一般 PP 原料，用於工業用收納箱',
+    '客戶要求產品防水防油，要用在戶外',
+    '加工助劑 PPA，供應商說可以減少模垢',
+    '密封圈改用氟橡膠，耐溫比較好',
+    '這批產品要出口德國，做咖啡機的零件',
+    '供應商的 SDS 成分欄只寫「專有配方」',
+    'ABS 外殼，一般家電用',
+    '炒鍋把手旁邊的不沾塗層',
+    '產品要做成食品容器，賣到歐盟',
+    'PTFE 墊片',
+    '色母，供應商有附不含氟聲明'
+  ]}
+];
+const DOWNTIME = [
+  '3 號機頂針斷了，拆模換頂針 2 小時',
+  '等原料，倉庫說下午才到',
+  '模溫機溫度一直上不來，叫保養來看',
+  '料斗堵塞，清了 20 分鐘',
+  '夜班少一個人，6 號機沒開',
+  '依計畫月保養',
+  '機械手臂夾爪感應器異常，重開兩次才好',
+  '換色，清機 40 分鐘',
+  '冷卻水路漏水，模具拆下來送修',
+  '原料含水率太高，重新烘料 3 小時',
+  '等品保首件放行',
+  '液壓油溫過高警報，停機降溫',
+  '新人操作錯誤，模具撞模',
+  '試模，研發借機台 4 小時',
+  '色母批號換了，顏色不對，等研發確認',
+  '停電公告，全廠停機',
+  '加熱圈燒斷，換新',
+  '排程改單，等新模具從倉庫拿過來',
+  '模具分模線毛邊，拆下來研磨',
+  '螺桿有異音，先停機檢查',
+  '主管開會，產線等指示要不要繼續做',
+  '原料有雜質，整批退回供應商',
+  '安全門感應器故障',
+  '交接沒講清楚，夜班用錯條件，停下來重調'
+];
+
+const DEMO = DOWNTIME;
+const HF_CSV = '';
+let QS = [], ROWS = [], HEAD = null, DATA = [], RESULT = [], STOP = false, seq = 0;
+
+/* ── 分類題 ── */
+function parseCats(t){
+  const out = {};
+  t.split('\n').map(l => l.trim()).filter(Boolean).forEach(l => {
+    const m = l.match(/^(.+?)[：:](.*)$/);
+    const k = (m ? m[1] : l).trim().slice(0, 20), v = (m ? m[2] : '').trim();
+    if (k) out[k] = v || k;
+  });
+  return out;
+}
+function drawQs(){
+  $('#qs').innerHTML = QS.map((q, i) => `<div class="q">
+    <div class="qh"><input type="text" data-k="name" data-i="${i}" value="${esc(q.name)}" placeholder="這題叫什麼（例：情緒）">
+    ${QS.length > 1 ? `<button class="ghost" data-del="${i}">刪掉</button>` : ''}</div>
+    <label>要問 Jev 的問題</label>
+    <input type="text" data-k="ask" data-i="${i}" value="${esc(q.ask)}" placeholder="例：這位客戶對我們的感覺是？">
+    <label style="display:block;margin-top:.4rem">類別：你的形容詞</label>
+    <textarea data-k="cats" data-i="${i}" placeholder="正面：滿意、稱讚、會再買&#10;負面：抱怨、失望、要退貨">${esc(q.cats)}</textarea>
+  </div>`).join('');
+  $('#addQ').disabled = QS.length >= 3;
+}
+$('#qs').addEventListener('input', e => { const t = e.target; if (t.dataset.k) QS[+t.dataset.i][t.dataset.k] = t.value; });
+$('#qs').addEventListener('click', e => { const d = e.target.dataset.del; if (d != null){ QS.splice(+d, 1); drawQs(); } });
+document.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => {
+  const p = PRESETS[b.dataset.preset];
+  /* 只有一題而且是空的，就直接換掉；否則加一題 */
+  const blank = QS.length === 1 && !QS[0].cats.trim();
+  if (blank) QS[0] = {...p}; else if (QS.length < 3) QS.push({...p}); else QS[QS.length - 1] = {...p};
+  drawQs();
+});
+$('#addQ').onclick = () => { if (QS.length < 3){ QS.push({...PRESETS.blank}); drawQs(); } };
+
+/* ── 資料 ── */
+function parseCSV(text){
+  const rows = []; let row = [], cell = '', q = false;
+  const sep = (text.split('\n')[0].match(/\t/g) || []).length > (text.split('\n')[0].match(/,/g) || []).length ? '\t' : ',';
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (q){ if (c === '"'){ if (text[i+1] === '"'){ cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === sep){ row.push(cell); cell = ''; }
+    else if (c === '\n'){ row.push(cell.replace(/\r$/, '')); rows.push(row); row = []; cell = ''; }
+    else cell += c;
+  }
+  if (cell || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+function loadFile(f){
+  const r = new FileReader();
+  r.onload = () => loadText(String(r.result), f.name);
+  r.readAsText(f, 'utf-8');
+}
+function loadText(raw, fname){
+  {
+    const text = raw.replace(/^﻿/, '');
+    const rows = parseCSV(text);
+    if (!rows.length){ $('#fileMsg').textContent = '這個檔案是空的。'; return; }
+    if (rows[0].length === 1){ HEAD = null; ROWS = []; $('#colRow').hidden = true; $('#src').value = rows.map(r => r[0]).join('\n'); }
+    else {
+      HEAD = rows[0]; ROWS = rows.slice(1);
+      /* 猜內容欄：平均字數最長的那一欄 */
+      const avg = HEAD.map((_, j) => ROWS.slice(0, 50).reduce((s, r) => s + (r[j] || '').length, 0));
+      const best = avg.indexOf(Math.max(...avg));
+      $('#col').innerHTML = HEAD.map((h, j) => `<option value="${j}"${j === best ? ' selected' : ''}>${esc(h || '第 ' + (j+1) + ' 欄')}</option>`).join('');
+      $('#colRow').hidden = false; fillFromCol();
+    }
+    const n = $('#src').value.split('\n').filter(x => x.trim()).length;
+    $('#fileMsg').innerHTML = `讀到 <b>${n}</b> 筆（${esc(fname)}）` + (n > MAX_ROWS ? `，只會判前 ${MAX_ROWS} 筆` : '') + '。';
+  }
+}
+function fillFromCol(){ const j = +$('#col').value; $('#src').value = ROWS.map(r => (r[j] || '').replace(/\s*\n\s*/g, ' ').trim()).join('\n'); }
+$('#col').onchange = fillFromCol;
+$('#file').onchange = e => { const f = e.target.files[0]; if (f) loadFile(f); };
+const drop = $('#src');
+['dragover','dragenter'].forEach(k => drop.addEventListener(k, e => { e.preventDefault(); drop.style.borderColor = 'var(--accent)'; }));
+['dragleave','drop'].forEach(k => drop.addEventListener(k, () => { drop.style.borderColor = ''; }));
+drop.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) loadFile(f); });
+drop.addEventListener('input', () => { HEAD = null; ROWS = []; $('#colRow').hidden = true; });
+CASES[0].data = DEMO;
+const GRPS = ['製造', '品質', '研發'];
+$('#cases').innerHTML = GRPS.map(g => '<div class="cgrp">' + esc(g) + '</div>' + CASES.map((c, i) => c.grp !== g ? '' :
+  `<div class="case" data-case="${i}"><b>${esc(c.title)}</b><span>${esc(c.desc)}（${c.n || c.data.length} 筆）</span>
+   <button class="ghost dl" data-dl="${i}">下載 CSV</button></div>`).join('')).join('');
+function caseCSV(c){
+  if (c.csv) return HF_CSV;
+  return '內容\n' + c.data.map(x => '"' + x.replace(/"/g, '""') + '"').join('\n') + '\n';
+}
+$('#cases').addEventListener('click', async e => {
+  const d = e.target.closest('[data-dl]');
+  if (d){
+    const c = CASES[+d.dataset.dl], a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\uFEFF' + caseCSV(c)], {type:'text/csv'}));
+    a.download = '示範資料_' + c.title + '.csv'; a.click(); return;
+  }
+  const b = e.target.closest('[data-case]'); if (!b) return;
+  const c = CASES[+b.dataset.case];
+  document.querySelectorAll('.case').forEach(x => x.classList.toggle('on', x === b));
+  $('#file').value = '';
+  QS = c.qs.map(k => ({...PRESETS[k]})); drawQs();
+  if (c.csv){
+    loadText(HF_CSV, c.csv);
+    $('#fileMsg').innerHTML += ' 來源：<a href="https://huggingface.co/datasets/albertkingdom/custom-service-ticket-zh-tw" target="_blank" rel="noopener">albertkingdom/custom-service-ticket-zh-tw</a>（CC BY 4.0，AI 生成的台灣電商工單）。判完會跟「原本的分類」對答案。';
+    return;
+  }
+  HEAD = null; ROWS = []; $('#colRow').hidden = true;
+  $('#src').value = c.data.join('\n');
+  $('#fileMsg').textContent = '放了「' + c.title + '」' + c.data.length + ' 筆示範資料。分類也換好了，可以直接按「開始判」，或先改成你的說法。';
+});
+
+/* ── 金鑰 ── */
+/* 自己的金鑰只存在這台瀏覽器（勾「記在這台電腦」才存），不寫進這個檔案；下載下來的網頁也不會帶著金鑰 */
+const KEY_SLOT = 'jev_own_key';
+function showOwn(){ const own = !$('#useClass').checked; $('#key').hidden = !own; $('#rememberRow').hidden = !own; $('#forget').hidden = !own; }
+$('#useClass').onchange = showOwn;
+try{ const k = localStorage.getItem(KEY_SLOT); if(k){ $('#useClass').checked = false; $('#key').value = k; $('#remember').checked = true; } }catch(_){}
+showOwn();
+function saveOwn(){ try{ if($('#remember').checked && $('#key').value.trim()) localStorage.setItem(KEY_SLOT, $('#key').value.trim()); else localStorage.removeItem(KEY_SLOT); }catch(_){} }
+$('#remember').onchange = saveOwn; $('#key').addEventListener('change', saveOwn);
+$('#forget').onclick = () => { $('#key').value = ''; $('#remember').checked = false; saveOwn(); };
+
+/* ── 呼叫 Jev ── */
+function log(cls, text, detail){
+  const d = document.createElement('div');
+  d.innerHTML = '<span class="' + cls + '">' + new Date().toLocaleTimeString('zh-TW', {hour12:false}) + ' ' + esc(text) + '</span>';
+  if (detail){ const det = document.createElement('details'); det.innerHTML = '<summary>看原始資料</summary><pre></pre>'; det.querySelector('pre').textContent = JSON.stringify(detail, null, 2); d.appendChild(det); }
+  $('#log').prepend(d);
+}
+const wait = ms => new Promise(r => setTimeout(r, ms));
+async function jev(state, questions, label){
+  const key = $('#useClass').checked ? 'class' : $('#key').value.trim();
+  if (!key) throw new Error('還沒貼金鑰：貼上你的 Jev 金鑰，或勾「用課堂金鑰」');
+  const body = {model:'jev-latest', state, questions};
+  const call = url => fetch(url, {method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer ' + key}, body:JSON.stringify(body)});
+  /* 全班共用教室出口 IP，課堂金鑰每分鐘有上限：被擋就等一下再送，不要直接算失敗 */
+  for (let tries = 0; tries < 4; tries++){
+    let res;
+    try { res = await call(RELAY); }
+    catch (e) {
+      const backup = RELAYS.find(u => u !== RELAY);
+      log('e', label + ' 連不到轉接站，改走備用網址');
+      try { res = await call(backup); RELAY = backup; }
+      catch (e2) { throw new Error('兩個轉接站都連不到（公司網路可能擋了，換手機熱點試試）'); }
+    }
+    const j = await res.json().catch(() => ({}));
+    if (res.status === 429){ log('e', label + ' 這一分鐘全班送太多了，等 20 秒再送'); $('#prog').textContent = '排隊中，等 20 秒…'; await wait(20000); continue; }
+    if (!res.ok) throw new Error(res.status + ' ' + (j.error || j.message || '') + (res.status === 401 ? '（金鑰不對，或課堂金鑰已關閉）' : ''));
+    log('i', label + ' ← ' + (res.headers.get('X-Typesafe-Request-Id') || 'ok'), {送出: body, 收到: j});
+    return j.answers || {};
+  }
+  throw new Error('等太久了，過一分鐘再按一次「開始判」');
+}
+
+/* ── 判 ── */
+function ready(){
+  const qs = QS.map((q, i) => ({...q, id:'q' + (i+1), crit: parseCats(q.cats)})).filter(q => Object.keys(q.crit).length >= 2);
+  return qs;
+}
+$('#run').onclick = async () => {
+  const lines = $('#src').value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, MAX_ROWS);
+  if (!lines.length){ alert('先放資料：上傳 CSV、貼上，或在最上面挑一個案例'); return; }
+  const qs = ready();
+  if (!qs.length){ alert('第 2 步至少要有一題，而且至少兩個類別（一行一類）'); return; }
+  const questions = Object.fromEntries(qs.map(q => [q.id, {type:'choice', instructions: q.ask || ('這則屬於哪一種' + (q.name || '') + '？'), criteria: q.crit}]));
+  /* 原始欄位留著，匯出時一起帶回去 */
+  const srcRows = HEAD ? ROWS.filter(r => (r[+$('#col').value] || '').trim()).slice(0, MAX_ROWS) : null;
+  DATA = {qs, head: HEAD, srcRows};
+  RESULT = []; STOP = false;
+  $('#run').disabled = true; $('#stop').hidden = false; $('#resCard').hidden = false;
+  drawHead(); draw();
+  for (let i = 0; i < lines.length && !STOP; i++){
+    $('#prog').textContent = '判到第 ' + (i+1) + ' / ' + lines.length + ' 筆';
+    try {
+      const a = await jev({內容: lines[i]}, questions, '第 ' + (i+1) + ' 筆');
+      RESULT.push({text: lines[i], i, ans: qs.map(q => ({c: (a[q.id] || {}).choice || '', p: (a[q.id] || {}).confidence}))});
+    } catch (e) {
+      log('e', '第 ' + (i+1) + ' 筆：' + e.message);
+      RESULT.push({text: lines[i], i, err: e.message});
+      if (/金鑰|連不到|等太久/.test(e.message)){ alert(e.message); break; }
+    }
+    draw();
+  }
+  $('#prog').textContent = (STOP ? '停了，' : '') + '判完 ' + RESULT.length + ' 筆';
+  $('#run').disabled = false; $('#stop').hidden = true;
+};
+$('#stop').onclick = () => { STOP = true; };
+
+/* ── 結果 ── */
+const TH = () => +$('#th').value;
+const needHuman = r => r.err || r.ans.some(a => a.p == null || a.p < TH());
+function drawHead(){
+  $('#th2').innerHTML = '<tr><th>#</th><th style="width:40%">內容</th>' + DATA.qs.map(q => '<th>' + esc(q.name || q.id) + '</th>').join('') + '<th>處理</th></tr>';
+}
+function draw(){
+  $('#thv').textContent = TH().toFixed(2);
+  const human = RESULT.filter(needHuman).length;
+  $('#nAll').textContent = RESULT.length; $('#nAuto').textContent = RESULT.length - human; $('#nHuman').textContent = human;
+  $('#sum').innerHTML = DATA.qs.map((q, k) => {
+    const cnt = {}; Object.keys(q.crit).forEach(c => cnt[c] = 0);
+    RESULT.forEach(r => { if (!r.err){ const c = r.ans[k].c; cnt[c] = (cnt[c] || 0) + 1; } });
+    const max = Math.max(1, ...Object.values(cnt));
+    return '<div><b>' + esc(q.name || q.id) + '</b>' + Object.entries(cnt).map(([c, n]) =>
+      `<div class="bar"><b title="${esc(c)}">${esc(c)}</b><span><i style="width:${n / max * 100}%"></i></span><span>${n}</span></div>`).join('') + '</div>';
+  }).join('');
+  /* 資料本來就有標籤（例如 Hugging Face 案例的「原本的分類」）：拿第一題跟它對答案 */
+  const li = DATA.head ? DATA.head.indexOf('原本的分類') : -1;
+  const ok = li >= 0 ? RESULT.filter(r => !r.err && DATA.srcRows[r.i] && r.ans[0].c === DATA.srcRows[r.i][li]) : [];
+  $('#agree').hidden = li < 0 || !RESULT.length;
+  if (li >= 0) $('#agree').textContent = '跟資料集原本的分類一樣：' + ok.length + ' / ' + RESULT.length + ' 筆。不一樣的那幾筆打開來看：是 Jev 錯、原本的標籤有爭議，還是你的形容詞沒寫清楚？';
+  const rows = $('#onlyHuman').checked ? RESULT.filter(needHuman) : RESULT;
+  $('#tb').innerHTML = rows.map(r => '<tr><td class="muted">' + (r.i + 1) + '</td><td>' + esc(r.text) + '</td>' +
+    (r.err ? `<td colspan="${DATA.qs.length}"><span class="tag err">判不出來</span> <span class="muted">${esc(r.err)}</span></td>`
+           : r.ans.map(a => `<td><span class="tag ${a.p >= TH() ? 'hi' : 'lo'}">${esc(a.c || '—')}</span><span class="p">${a.p == null ? '' : Math.round(a.p * 100) + '%'}</span></td>`).join('')) +
+    '<td>' + (needHuman(r) ? '<span class="tag lo">要人看</span>' : '<span class="tag hi">自動</span>') + '</td></tr>').join('');
+}
+$('#th').oninput = () => { if (DATA.qs) draw(); };
+$('#onlyHuman').onchange = () => { if (DATA.qs) draw(); };
+$('#csv').onclick = () => {
+  const qcols = DATA.qs.flatMap(q => ['Jev ' + (q.name || q.id), 'Jev ' + (q.name || q.id) + '把握']);
+  const head = (DATA.head ? DATA.head : ['內容']).concat(qcols, ['處理']);
+  const body = RESULT.map(r => {
+    const base = DATA.srcRows ? DATA.srcRows[r.i] : [r.text];
+    const res = r.err ? DATA.qs.flatMap(() => ['', '']) : r.ans.flatMap(a => [a.c, a.p == null ? '' : a.p.toFixed(2)]);
+    return base.concat(res, [needHuman(r) ? '要人看' : '自動']);
+  });
+  const csv = [head].concat(body).map(row => row.map(x => '"' + String(x ?? '').replace(/"/g, '""') + '"').join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], {type:'text/csv'}));
+  a.download = 'Jev分類結果.csv'; a.click();
+};
+
+/* 存一份自己的：放進 Prototype 倉庫或帶回公司（頁面裡沒有金鑰） */
+$('#save2').onclick = e => $('#save').onclick(e);
+$('#save').onclick = async e => {
+  e.preventDefault();
+  const html = '<!doctype html>\n' + document.documentElement.outerHTML.replace(/<tbody id="tb">[\s\S]*?<\/tbody>/, '<tbody id="tb"></tbody>');
+  const r = await fetch(location.href).catch(() => null);
+  const src = r && r.ok ? await r.text() : html;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([src], {type:'text/html'}));
+  a.download = 'index.html'; a.click();
+};
+
+QS = [{...PRESETS.cause}];
+drawQs();
+</script>
